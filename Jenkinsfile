@@ -1,3 +1,5 @@
+// Pipeline Jenkins pour SunuSanté
+
 def runCmd(String commande) {
     if (isUnix()) {
         sh commande
@@ -11,7 +13,9 @@ pipeline {
     agent {
         docker {
             image 'python:3.11-slim'
-            args '-u root:root'
+
+            // Important : exécuter le conteneur en root
+            args '-u root'
         }
     }
 
@@ -51,7 +55,7 @@ pipeline {
 
         stage('Sécurité - SAST') {
             steps {
-                runCmd 'semgrep --config p/security-audit --config p/django --config p/python --error .'
+                runCmd "semgrep --config p/security-audit --config p/django --config p/python --error ."
             }
         }
 
@@ -63,6 +67,7 @@ pipeline {
     }
 
     post {
+
         success {
             echo 'Pipeline vert : build, lint, tests et sécurité tous OK.'
         }
