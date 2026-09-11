@@ -12,14 +12,12 @@ def runCmd(String commande) {
 }
 
 pipeline {
+
     agent {
         docker {
             image 'python:3.11-slim'
+            args '-u root'
         }
-    }
-
-    environment {
-        PATH = "${HOME}/.local/bin:${PATH}"
     }
 
     stages {
@@ -32,45 +30,73 @@ pipeline {
 
         stage('Installation des dépendances') {
             steps {
-                // Installation des dépendances sans modifier pip système
-                runCmd 'python -m pip install --user -r requirements-dev.txt'
+
+                runCmd '''
+                    python -m pip install --upgrade pip
+                '''
+
+                runCmd '''
+                    pip install -r requirements-dev.txt
+                '''
             }
         }
 
         stage('Build') {
-            // Vérification de la configuration Django
             steps {
-                runCmd 'python manage.py check'
-                runCmd 'python manage.py collectstatic --noinput --dry-run'
+
+                runCmd '''
+                    python manage.py check
+                '''
+
+                runCmd '''
+                    python manage.py collectstatic --noinput --dry-run
+                '''
             }
         }
 
         stage('Standard de code (lint)') {
             steps {
-                runCmd 'flake8 .'
+
+                runCmd '''
+                    flake8 .
+                '''
             }
         }
 
         stage('Tests') {
             steps {
-                runCmd 'python manage.py test'
+
+                runCmd '''
+                    python manage.py test
+                '''
             }
         }
 
         stage('Sécurité - SAST') {
             steps {
-                runCmd 'semgrep --config p/security-audit --config p/django --config p/python --error .'
+
+                runCmd '''
+                    semgrep \
+                        --config p/security-audit \
+                        --config p/django \
+                        --config p/python \
+                        --error .
+                '''
             }
         }
 
         stage('Sécurité - SCA') {
             steps {
-                runCmd 'pip-audit -r requirements.txt'
+
+                runCmd '''
+                    pip-audit -r requirements.txt
+                '''
             }
         }
     }
 
     post {
+
         success {
             echo 'Pipeline vert : build, lint, tests et sécurité tous OK.'
         }
