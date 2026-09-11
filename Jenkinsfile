@@ -13,8 +13,6 @@ pipeline {
     agent {
         docker {
             image 'python:3.11-slim'
-
-            // Important : exécuter le conteneur en root
             args '-u root'
         }
     }
@@ -29,39 +27,49 @@ pipeline {
 
         stage('Installation des dépendances') {
             steps {
-                runCmd 'python -m pip install --upgrade pip'
-                runCmd 'pip install -r requirements-dev.txt'
+                sh '''
+                    python -m pip install --upgrade pip
+                    pip install -r requirements-dev.txt
+                '''
             }
         }
 
         stage('Build') {
             steps {
-                runCmd 'python manage.py check'
-                runCmd 'python manage.py collectstatic --noinput --dry-run'
+                sh '''
+                    python manage.py check
+                    python manage.py collectstatic --noinput --dry-run
+                '''
             }
         }
 
         stage('Standard de code (lint)') {
             steps {
-                runCmd 'flake8 .'
+                sh 'flake8 .'
             }
         }
 
         stage('Tests') {
             steps {
-                runCmd 'python manage.py test'
+                sh 'python manage.py test'
             }
         }
 
         stage('Sécurité - SAST') {
             steps {
-                runCmd "semgrep --config p/security-audit --config p/django --config p/python --error ."
+                sh '''
+                    semgrep \
+                        --config p/security-audit \
+                        --config p/django \
+                        --config p/python \
+                        --error .
+                '''
             }
         }
 
         stage('Sécurité - SCA') {
             steps {
-                runCmd 'pip-audit -r requirements.txt'
+                sh 'pip-audit -r requirements.txt'
             }
         }
     }
